@@ -25,7 +25,7 @@ The image generation process will follow the configurations of these 8 units in 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example1.png)
 
 ## More
-The idea of this extension was inspired by Seniorious, A Carillons composed of different talismans.  
+The idea of this extension was inspired by Seniorious, A Carillon composed of different talismans.  
 
 Different talismans correspond in sequence to make Seniorious a powerful weapon, and so do the samplers in the samplers scheduler.  
 
