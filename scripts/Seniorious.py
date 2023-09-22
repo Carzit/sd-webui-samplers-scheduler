@@ -21,7 +21,7 @@ from modules.ui_components import ToolButton, FormRow
 MAX_SAMPLER_COUNT=8
 samplers_list = ['Euler','Euler a', 'Heun', 'Heun++',
                  'DPM2','DPM2 a', 'DPM++ 2S a','DPM++ SDE',
-                 'DPM++ 2M', 'DPM++ 2M SDE', 'DPM++ 3M SDE' ]
+                 'DPM++ 2M', 'DPM++ 2M SDE', 'DPM++ 3M SDE', 'None']
 ui_info = [(None, 0), (None, 0), (None, 0), (None, 0), (None, 0), (None, 0), (None, 0), (None, 0)]
 
 class Script(scripts.Script):
@@ -537,7 +537,8 @@ name2sampler_func = {'Euler':sample_euler,
                      'DPM++ SDE':sample_dpmpp_sde,
                      'DPM++ 2M':sample_dpmpp_2m,
                      'DPM++ 2M SDE':sample_dpmpp_2m_sde,
-                     'DPM++ 3M SDE':sample_dpmpp_3m_sde
+                     'DPM++ 3M SDE':sample_dpmpp_3m_sde,
+                     'None':None
                      }
 
 def split_sigmas(sigmas, steps):
