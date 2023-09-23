@@ -22,6 +22,8 @@ You can choose what kind of sampler used in each unit(choose `None` to unable), 
 
 The image generation process will follow the configurations of these 8 units in sequence. 
 
+**Attention: The total steps should be equal to the sum of the steps in every units!**
+
 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example1.PNG)
 
