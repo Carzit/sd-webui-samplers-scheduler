@@ -16,9 +16,9 @@ Choose the Sampler Seniorious to enable the samplers scheduler.
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example0.PNG)
 
 
-This samplers scheduler provides 8 sampler units (Sampler1-8). 
+This samplers scheduler provides 8 sampler units (Sampler 1-8). 
 
-You can choose what kind of sampler used in each unit(choose None to unable), and the inference steps for each unit.  
+You can choose what kind of sampler used in each unit(choose `None` to unable), and the inference steps for each unit.  
 
 The image generation process will follow the configurations of these 8 units in sequence. 
 
@@ -26,21 +26,22 @@ The image generation process will follow the configurations of these 8 units in 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example1.PNG)
 
 ## Available Samplers
-14 kinds of mainstream samplers available:  
-- Euler
-- Euler a
-- Heun
-- Heun++ (my improved version)
-- LMS
-- DPM2
-- DPM2 a
-- DPM fast
-- DPM adaptive
-- DPM++ 2S a
-- DPM++ SDE
-- DPM++ 2M
-- DPM++ 2M SDE
-- DPM++ 3M SDE
+12 kinds of mainstream samplers are available:  
+
+- `Euler`
+- `Euler a`
+- `Heun`
+- `Heun++` (my improved version)
+- `LMS`
+- `DPM2`
+- `DPM2 a`
+- `DPM++ 2S a`
+- `DPM++ SDE`
+- `DPM++ 2M`
+- `DPM++ 2M SDE`
+- `DPM++ 3M SDE`
+
+You can also choose `Skip` to skip certain steps.
 
 
 ## More
