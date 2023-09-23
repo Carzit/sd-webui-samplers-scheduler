@@ -5,9 +5,10 @@ A samplers scheduler which can apply different sampler in diffrent generation st
 
 which I hope will be benefit to achieve a balance between generation speed and image quality.
 
-## How to use
-SD Version <= 1.5.2
+## Requirement
+sd webui Version <= 1.5.2  
 
+## How to use
 This repository is a extension for sd webui. Just use it as a sd extension!😉  
 
 Choose the Sampler Seniorious to enable the samplers scheduler.
@@ -24,8 +25,26 @@ The image generation process will follow the configurations of these 8 units in 
 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example1.png)
 
+## Available Samplers
+14 kinds of mainstream sampler available:  
+- Euler
+- Euler a
+- Heun
+- Heun++
+- LMS
+- DPM2
+- DPM2 a
+- DPM fast
+- DPM adaptive
+- DPM++ 2S a
+- DPM++ SDE
+- DPM++ 2M
+- DPM++ 2M SDE
+- DPM++ 3M SDE
+
+
 ## More
-The idea of this extension was inspired by Seniorious, A Carillon composed of different talismans.  
+The idea of this extension was inspired by Seniorious, a Carillon composed of different talismans.  
 
 Different talismans correspond in sequence to make Seniorious a powerful weapon, and so do the samplers in the samplers scheduler.  
 
