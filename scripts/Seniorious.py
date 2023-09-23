@@ -4,13 +4,15 @@ import functools
 import torch
 from torch import nn
 import torchsde
-from tqdm import trange
+from tqdm import trange, tqdm
+from scipy import integrate
+import math
 
 import k_diffusion.sampling
 from modules import shared
+
 from modules import sd_samplers, sd_samplers_common
 import modules.sd_samplers_kdiffusion as K
-
 import modules.scripts as scripts
 from modules import shared, script_callbacks
 import gradio as gr
@@ -19,10 +21,16 @@ from modules.ui_components import ToolButton, FormRow
 
 
 MAX_SAMPLER_COUNT=8
+
 samplers_list = ['Euler','Euler a', 'Heun', 'Heun++',
-                 'DPM2','DPM2 a', 'DPM++ 2S a','DPM++ SDE',
-                 'DPM++ 2M', 'DPM++ 2M SDE', 'DPM++ 3M SDE', 'None']
-ui_info = [(None, 0), (None, 0), (None, 0), (None, 0), (None, 0), (None, 0), (None, 0), (None, 0)]
+                 'LMS',
+                 'DPM2','DPM2 a',
+                 'DPM fast', 'DPM adaptive',
+                 'DPM++ 2S a','DPM++ SDE',
+                 'DPM++ 2M', 'DPM++ 2M SDE', 'DPM++ 3M SDE',
+                 'None']
+
+ui_info = [(None, 0) for i in range(MAX_SAMPLER_COUNT)]
 
 class Script(scripts.Script):
     def __init__(self) -> None:
@@ -39,25 +47,26 @@ class Script(scripts.Script):
             ui_info[i] = (sampler, int(step))
         with gr.Group():
             with gr.Accordion("Samplers Scheduler Seniorious", open=False):
-                with gr.Row():
-                    for i in range(MAX_SAMPLER_COUNT):
-                        with FormRow(variant="compact"):
-                            sampler = gr.Dropdown(samplers_list,
-                                                  value="None",
-                                                  label=f'Sampler{i+1}')
-                            step = gr.Slider(minimum=0,
-                                             maximum=50,
-                                             step=1,
-                                             label=f'Steps{i+1}')
+                for i in range(MAX_SAMPLER_COUNT):
+                    with FormRow(variant="compact"):
+                        sampler = gr.Dropdown(samplers_list,
+                                              value="None",
+                                              label=f'Sampler{i + 1}')
+                        step = gr.Slider(minimum=0,
+                                         maximum=50,
+                                         step=1,
+                                         label=f'Steps{i + 1}')
+                        with gr.Row(visible=False):
                             index = gr.Slider(value=i,
                                               interactive=False,
                                               visible=False)
-                            sampler.change(update_info,
-                                           inputs=[sampler, step, index],
-                                           outputs=[])
-                            step.change(update_info,
-                                        inputs=[sampler, step, index],
-                                        outputs=[])
+                        sampler.change(update_info,
+                                       inputs=[sampler, step, index],
+                                       outputs=[])
+                        step.change(update_info,
+                                    inputs=[sampler, step, index],
+                                    outputs=[])
+
 
         return None
 
@@ -65,14 +74,6 @@ class Script(scripts.Script):
 #===================================================================================
 def append_zero(x):
     return torch.cat([x, x.new_zeros([1])])
-
-def get_sigmas_karras(n, sigma_min, sigma_max, rho=7., device='cpu'):
-    """Constructs the noise schedule of Karras et al. (2022)."""
-    ramp = torch.linspace(0, 1, n)
-    min_inv_rho = sigma_min ** (1 / rho)
-    max_inv_rho = sigma_max ** (1 / rho)
-    sigmas = (max_inv_rho + ramp * (min_inv_rho - max_inv_rho)) ** rho
-    return append_zero(sigmas).to(device)
 
 def append_dims(x, target_dims):
     """Appends dimensions to the end of a tensor until it has target_dims dimensions."""
@@ -96,6 +97,112 @@ def get_ancestral_step(sigma_from, sigma_to, eta=1.):
 
 def default_noise_sampler(x):
     return lambda sigma, sigma_next: torch.randn_like(x)
+
+def linear_multistep_coeff(order, t, i, j):
+    if order - 1 > i:
+        raise ValueError(f'Order {order} too high for step {i}')
+    def fn(tau):
+        prod = 1.
+        for k in range(order):
+            if j == k:
+                continue
+            prod *= (tau - t[i - k]) / (t[i - j] - t[i - k])
+        return prod
+    return integrate.quad(fn, t[i], t[i + 1], epsrel=1e-4)[0]
+
+class DPMSolver(nn.Module):
+    """DPM-Solver. See https://arxiv.org/abs/2206.00927."""
+
+    def __init__(self, model, extra_args=None, eps_callback=None, info_callback=None):
+        super().__init__()
+        self.model = model
+        self.extra_args = {} if extra_args is None else extra_args
+        self.eps_callback = eps_callback
+        self.info_callback = info_callback
+
+    def t(self, sigma):
+        return -sigma.log()
+
+    def sigma(self, t):
+        return t.neg().exp()
+
+    def eps(self, eps_cache, key, x, t, *args, **kwargs):
+        if key in eps_cache:
+            return eps_cache[key], eps_cache
+        sigma = self.sigma(t) * x.new_ones([x.shape[0]])
+        eps = (x - self.model(x, sigma, *args, **self.extra_args, **kwargs)) / self.sigma(t)
+        if self.eps_callback is not None:
+            self.eps_callback()
+        return eps, {key: eps, **eps_cache}
+
+    def dpm_solver_1_step(self, x, t, t_next, eps_cache=None):
+        eps_cache = {} if eps_cache is None else eps_cache
+        h = t_next - t
+        eps, eps_cache = self.eps(eps_cache, 'eps', x, t)
+        x_1 = x - self.sigma(t_next) * h.expm1() * eps
+        return x_1, eps_cache
+
+    def dpm_solver_2_step(self, x, t, t_next, r1=1 / 2, eps_cache=None):
+        eps_cache = {} if eps_cache is None else eps_cache
+        h = t_next - t
+        eps, eps_cache = self.eps(eps_cache, 'eps', x, t)
+        s1 = t + r1 * h
+        u1 = x - self.sigma(s1) * (r1 * h).expm1() * eps
+        eps_r1, eps_cache = self.eps(eps_cache, 'eps_r1', u1, s1)
+        x_2 = x - self.sigma(t_next) * h.expm1() * eps - self.sigma(t_next) / (2 * r1) * h.expm1() * (eps_r1 - eps)
+        return x_2, eps_cache
+
+    def dpm_solver_3_step(self, x, t, t_next, r1=1 / 3, r2=2 / 3, eps_cache=None):
+        eps_cache = {} if eps_cache is None else eps_cache
+        h = t_next - t
+        eps, eps_cache = self.eps(eps_cache, 'eps', x, t)
+        s1 = t + r1 * h
+        s2 = t + r2 * h
+        u1 = x - self.sigma(s1) * (r1 * h).expm1() * eps
+        eps_r1, eps_cache = self.eps(eps_cache, 'eps_r1', u1, s1)
+        u2 = x - self.sigma(s2) * (r2 * h).expm1() * eps - self.sigma(s2) * (r2 / r1) * ((r2 * h).expm1() / (r2 * h) - 1) * (eps_r1 - eps)
+        eps_r2, eps_cache = self.eps(eps_cache, 'eps_r2', u2, s2)
+        x_3 = x - self.sigma(t_next) * h.expm1() * eps - self.sigma(t_next) / r2 * (h.expm1() / h - 1) * (eps_r2 - eps)
+        return x_3, eps_cache
+
+    def dpm_solver_fast(self, x, t_start, t_end, nfe, eta=0., s_noise=1., noise_sampler=None):
+        noise_sampler = default_noise_sampler(x) if noise_sampler is None else noise_sampler
+        if not t_end > t_start and eta:
+            raise ValueError('eta must be 0 for reverse sampling')
+
+        m = math.floor(nfe / 3) + 1
+        ts = torch.linspace(t_start, t_end, m + 1, device=x.device)
+
+        if nfe % 3 == 0:
+            orders = [3] * (m - 2) + [2, 1]
+        else:
+            orders = [3] * (m - 1) + [nfe % 3]
+
+        for i in range(len(orders)):
+            eps_cache = {}
+            t, t_next = ts[i], ts[i + 1]
+            if eta:
+                sd, su = get_ancestral_step(self.sigma(t), self.sigma(t_next), eta)
+                t_next_ = torch.minimum(t_end, self.t(sd))
+                su = (self.sigma(t_next) ** 2 - self.sigma(t_next_) ** 2) ** 0.5
+            else:
+                t_next_, su = t_next, 0.
+
+            eps, eps_cache = self.eps(eps_cache, 'eps', x, t)
+            denoised = x - self.sigma(t) * eps
+            if self.info_callback is not None:
+                self.info_callback({'x': x, 'i': i, 't': ts[i], 't_up': t, 'denoised': denoised})
+
+            if orders[i] == 1:
+                x, eps_cache = self.dpm_solver_1_step(x, t, t_next_, eps_cache=eps_cache)
+            elif orders[i] == 2:
+                x, eps_cache = self.dpm_solver_2_step(x, t, t_next_, eps_cache=eps_cache)
+            else:
+                x, eps_cache = self.dpm_solver_3_step(x, t, t_next_, eps_cache=eps_cache)
+
+            x = x + su * s_noise * noise_sampler(self.sigma(t), self.sigma(t_next))
+
+        return x
 
 class BatchedBrownianTree:
     """A wrapper around torchsde.BrownianTree that enables batches of entropy."""
@@ -216,6 +323,82 @@ def sample_heun(model, x, sigmas, extra_args=None, callback=None, disable=None, 
     return x
 
 @torch.no_grad()
+def sample_heunpp2(model, x, sigmas, extra_args=None, callback=None, disable=None, s_churn=0., s_tmin=0., s_tmax=float('inf'), s_noise=1.):
+    """Implements Algorithm 2 (Heun steps) from Karras et al. (2022)."""
+    extra_args = {} if extra_args is None else extra_args
+    s_in = x.new_ones([x.shape[0]])
+    for i in trange(len(sigmas) - 1, disable=disable):
+        gamma = min(s_churn / (len(sigmas) - 1), 2 ** 0.5 - 1) if s_tmin <= sigmas[i] <= s_tmax else 0.
+        eps = torch.randn_like(x) * s_noise
+        sigma_hat = sigmas[i] * (gamma + 1)
+        if gamma > 0:
+            x = x + eps * (sigma_hat ** 2 - sigmas[i] ** 2) ** 0.5
+        denoised = model(x, sigma_hat * s_in, **extra_args)
+        d = to_d(x, sigma_hat, denoised)
+        if callback is not None:
+            callback({'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigma_hat, 'denoised': denoised})
+        dt = sigmas[i + 1] - sigma_hat
+        if sigmas[i + 1] == 0:
+            # Euler method
+            x = x + d * dt
+        elif sigmas[i + 2] == 0:
+
+            # Heun's method
+            x_2 = x + d * dt
+            denoised_2 = model(x_2, sigmas[i + 1] * s_in, **extra_args)
+            d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
+
+            w = 2 * sigmas[0]
+            w2 = sigmas[i+1]/w
+            w1 = 1 - w2
+
+            d_prime = d * w1 + d_2 * w2
+
+
+            x = x + d_prime * dt
+
+        else:
+            # Heun++
+            x_2 = x + d * dt
+            denoised_2 = model(x_2, sigmas[i + 1] * s_in, **extra_args)
+            d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
+            dt_2 = sigmas[i + 2] - sigmas[i + 1]
+
+            x_3 = x_2 + d_2 * dt_2
+            denoised_3 = model(x_3, sigmas[i + 2] * s_in, **extra_args)
+            d_3 = to_d(x_3, sigmas[i + 2], denoised_3)
+
+            w = 3 * sigmas[0]
+            w2 = sigmas[i + 1] / w
+            w3 = sigmas[i + 2] / w
+            w1 = 1 - w2 - w3
+
+            d_prime = w1 * d + w2 * d_2 + w3 * d_3
+            x = x + d_prime * dt
+
+
+    return x
+
+@torch.no_grad()
+def sample_lms(model, x, sigmas, extra_args=None, callback=None, disable=None, order=4):
+    extra_args = {} if extra_args is None else extra_args
+    s_in = x.new_ones([x.shape[0]])
+    sigmas_cpu = sigmas.detach().cpu().numpy()
+    ds = []
+    for i in trange(len(sigmas) - 1, disable=disable):
+        denoised = model(x, sigmas[i] * s_in, **extra_args)
+        d = to_d(x, sigmas[i], denoised)
+        ds.append(d)
+        if len(ds) > order:
+            ds.pop(0)
+        if callback is not None:
+            callback({'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised})
+        cur_order = min(i + 1, order)
+        coeffs = [linear_multistep_coeff(cur_order, sigmas_cpu, i, j) for j in range(cur_order)]
+        x = x + sum(coeff * d for coeff, d in zip(coeffs, reversed(ds)))
+    return x
+
+@torch.no_grad()
 def sample_dpm_2(model, x, sigmas, extra_args=None, callback=None, disable=None, s_churn=0., s_tmin=0., s_tmax=float('inf'), s_noise=1.):
     """A sampler inspired by DPM-Solver-2 and Algorithm 2 from Karras et al. (2022)."""
     extra_args = {} if extra_args is None else extra_args
@@ -273,61 +456,36 @@ def sample_dpm_2_ancestral(model, x, sigmas, extra_args=None, callback=None, dis
             x = x + noise_sampler(sigmas[i], sigmas[i + 1]) * s_noise * sigma_up
     return x
 
+
 @torch.no_grad()
-def sample_heunpp2(model, x, sigmas, extra_args=None, callback=None, disable=None, s_churn=0., s_tmin=0., s_tmax=float('inf'), s_noise=1.):
-    """Implements Algorithm 2 (Heun steps) from Karras et al. (2022)."""
-    extra_args = {} if extra_args is None else extra_args
-    s_in = x.new_ones([x.shape[0]])
-    for i in trange(len(sigmas) - 1, disable=disable):
-        gamma = min(s_churn / (len(sigmas) - 1), 2 ** 0.5 - 1) if s_tmin <= sigmas[i] <= s_tmax else 0.
-        eps = torch.randn_like(x) * s_noise
-        sigma_hat = sigmas[i] * (gamma + 1)
-        if gamma > 0:
-            x = x + eps * (sigma_hat ** 2 - sigmas[i] ** 2) ** 0.5
-        denoised = model(x, sigma_hat * s_in, **extra_args)
-        d = to_d(x, sigma_hat, denoised)
+def sample_dpm_fast(model, x, sigmas, extra_args=None, callback=None, disable=None, eta=0., s_noise=1., noise_sampler=None):
+    """DPM-Solver-Fast (fixed step size). See https://arxiv.org/abs/2206.00927."""
+    sigma_min = min(sigmas)
+    sigma_max = max(sigmas)
+    n = len(sigmas)
+    if sigma_min <= 0 or sigma_max <= 0:
+        raise ValueError('sigma_min and sigma_max must not be 0')
+    with tqdm(total=n, disable=disable) as pbar:
+        dpm_solver = DPMSolver(model, extra_args, eps_callback=pbar.update)
         if callback is not None:
-            callback({'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigma_hat, 'denoised': denoised})
-        dt = sigmas[i + 1] - sigma_hat
-        if sigmas[i + 1] == 0:
-            # Euler method
-            x = x + d * dt
-        elif sigmas[i + 2] == 0:
+            dpm_solver.info_callback = lambda info: callback({'sigma': dpm_solver.sigma(info['t']), 'sigma_hat': dpm_solver.sigma(info['t_up']), **info})
+        return dpm_solver.dpm_solver_fast(x, dpm_solver.t(torch.tensor(sigma_max)), dpm_solver.t(torch.tensor(sigma_min)), n, eta, s_noise, noise_sampler)
 
-            # Heun's method
-            x_2 = x + d * dt
-            denoised_2 = model(x_2, sigmas[i + 1] * s_in, **extra_args)
-            d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
+@torch.no_grad()
+def sample_dpm_adaptive(model, x, sigmas, extra_args=None, callback=None, disable=None, order=3, rtol=0.05, atol=0.0078, h_init=0.05, pcoeff=0., icoeff=1., dcoeff=0., accept_safety=0.81, eta=0., s_noise=1., noise_sampler=None, return_info=False):
+    """DPM-Solver-12 and 23 (adaptive step size). See https://arxiv.org/abs/2206.00927."""
+    sigma_min = min(sigmas)
+    sigma_max = max(sigmas)
 
-            w = 2 * sigmas[0]
-            w2 = sigmas[i+1]/w
-            w1 = 1 - w2
-
-            d_prime = d * w1 + d_2 * w2
-
-
-            x = x + d_prime * dt
-
-        else:
-            # Heun++
-            x_2 = x + d * dt
-            denoised_2 = model(x_2, sigmas[i + 1] * s_in, **extra_args)
-            d_2 = to_d(x_2, sigmas[i + 1], denoised_2)
-            dt_2 = sigmas[i + 2] - sigmas[i + 1]
-
-            x_3 = x_2 + d_2 * dt_2
-            denoised_3 = model(x_3, sigmas[i + 2] * s_in, **extra_args)
-            d_3 = to_d(x_3, sigmas[i + 2], denoised_3)
-
-            w = 3 * sigmas[0]
-            w2 = sigmas[i + 1] / w
-            w3 = sigmas[i + 2] / w
-            w1 = 1 - w2 - w3
-
-            d_prime = w1 * d + w2 * d_2 + w3 * d_3
-            x = x + d_prime * dt
-
-
+    if sigma_min <= 0 or sigma_max <= 0:
+        raise ValueError('sigma_min and sigma_max must not be 0')
+    with tqdm(disable=disable) as pbar:
+        dpm_solver = DPMSolver(model, extra_args, eps_callback=pbar.update)
+        if callback is not None:
+            dpm_solver.info_callback = lambda info: callback({'sigma': dpm_solver.sigma(info['t']), 'sigma_hat': dpm_solver.sigma(info['t_up']), **info})
+        x, info = dpm_solver.dpm_solver_adaptive(x, dpm_solver.t(torch.tensor(sigma_max)), dpm_solver.t(torch.tensor(sigma_min)), order, rtol, atol, h_init, pcoeff, icoeff, dcoeff, accept_safety, eta, s_noise, noise_sampler)
+    if return_info:
+        return x, info
     return x
 
 @torch.no_grad()
@@ -531,8 +689,11 @@ name2sampler_func = {'Euler':sample_euler,
                      'Euler a':sample_euler_ancestral,
                      'Heun':sample_heun,
                      'Heun++':sample_heunpp2,
+                     'LMS': sample_lms,
                      'DPM2':sample_dpm_2,
                      'DPM2 a':sample_dpm_2_ancestral,
+                     'DPM fast':sample_dpm_fast,
+                     'DPM adaptive':sample_dpm_adaptive,
                      'DPM++ 2S a':sample_dpmpp_2s_ancestral,
                      'DPM++ SDE':sample_dpmpp_sde,
                      'DPM++ 2M':sample_dpmpp_2m,
@@ -551,16 +712,19 @@ def split_sigmas(sigmas, steps):
 
     return result
 
+def get_samplers_steps():
+    result = []
+    for i in ui_info:
+        if i[0] != None and i[1] != 0:
+            result.append(i)
+    return result
+
 def seniorious(model, x, sigmas, extra_args=None, callback=None, disable=None, s_churn=0., s_tmin=0., s_tmax=float('inf'), s_noise=1.):
     """Implements Algorithm 2 (Heun steps) from Karras et al. (2022)."""
     extra_args = {} if extra_args is None else extra_args
 
-    div_samplers_steps = []
-    for i in ui_info:
-        if i[0] != None and i[1] != 0:
-            div_samplers_steps.append(i)
-
-    samplers_steps = [(name2sampler_func[sampler_step[0]], int(sampler_step[1])) for sampler_step in div_samplers_steps]
+    samplers_steps = get_samplers_steps()
+    samplers_steps = [(name2sampler_func[sampler_step[0]], int(sampler_step[1])) for sampler_step in samplers_steps]
     samplers = [sampler_step[0] for sampler_step in samplers_steps]
     steps = [sampler_step[1] for sampler_step in samplers_steps]
     splitted_sigmas = split_sigmas(sigmas, steps)
