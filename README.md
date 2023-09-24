@@ -11,7 +11,10 @@ sd webui Version <= 1.5.2
 ## How to use
 This repository is a extension for sd webui. Just use it as a sd extension!😉  
 
-Choose the Sampler Seniorious to enable the samplers scheduler.
+Choose the Sampler Seniorious or Seniorious Karras to enable the samplers scheduler.  
+
+*Seniorious uses nomal noise scheduler and Seniorious Karras uses the noise scheduler  
+recommended in [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364) (Karras et al., 2022)  
 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example0.PNG)
 
@@ -44,6 +47,18 @@ The image generation process will follow the configurations of these 8 units in 
 - `DPM++ 3M SDE`
 
 You can also choose `Skip` to skip certain steps.
+
+## Example
+![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example2.png)
+
+Sampler Scheduler Parameters:  
+| Unit | Sampler | Steps |
+| :-----:| :----: | :----: |
+| Sampler1 | Heun | 10 steps |
+| Sampler2 | DPM++2M | 10 steps |
+| Sampler3 | Euler | 10 steps |  
+
+*Seniorious and Seniorious Karras use the same parameters in this example
 
 
 ## More
