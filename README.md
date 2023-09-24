@@ -3,7 +3,7 @@
 ## Introduce
 A samplers scheduler which can apply different sampler in diffrent generation steps,  
 
-I hope it will be benefit to achieve a balance between generation speed and image quality.
+I hope it will be helpful to achieve a balance between generation speed and image quality.
 
 ## Requirement
 sd webui Version <= 1.5.2  
