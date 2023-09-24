@@ -3,7 +3,7 @@
 ## Introduce
 A samplers scheduler which can apply different sampler in diffrent generation steps,  
 
-which I hope will be benefit to achieve a balance between generation speed and image quality.
+I hope it will be benefit to achieve a balance between generation speed and image quality.
 
 ## Requirement
 sd webui Version <= 1.5.2  
@@ -22,7 +22,7 @@ You can choose what kind of sampler used in each unit(choose `None` to unable), 
 
 The image generation process will follow the configurations of these 8 units in sequence. 
 
-**Attention: The total steps should be equal to the sum of the steps in every units!**
+**Attention: The total steps should be equal to the sum of the steps in every unit!**
 
 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example1.PNG)
