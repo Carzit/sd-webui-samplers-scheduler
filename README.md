@@ -1,4 +1,4 @@
-# sd-webui-samplers-scheduler
+# sd-webui-samplers-scheduler Seniorious
 
 ## Introduce
 A samplers scheduler which can apply different sampler in diffrent generation steps,  
@@ -11,9 +11,9 @@ sd webui Version <= 1.5.2
 ## How to use
 This repository is a extension for sd webui. Just use it as a sd extension!😉  
 
-Choose the Sampler Seniorious or Seniorious Karras to enable the samplers scheduler.  
+Choose the Sampler `Seniorious` or `Seniorious Karras` to enable the samplers scheduler.  
 
-*Seniorious uses nomal noise scheduler and Seniorious Karras uses the noise scheduler  
+*`Seniorious` uses nomal noise scheduler and `Seniorious Karras` uses the noise scheduler  
 recommended in [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364) (Karras et al., 2022)  
 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example0.PNG)
@@ -50,6 +50,14 @@ You can also choose `Skip` to skip certain steps.
 
 ## Example
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example2.png)
+Shared Parameters: 
+- Prompt: best quality, masterpiece, 1girl, solo, standing, sky, portrait, looking down, floating light particles, sunshine, cloud, depth of field, field, wide shot
+- Negative prompt: badhandv4, By bad artist -neg, EasyNegative, NegfeetV2, ng_deepnegative_v1_75t, verybadimagenegative_v1.3
+- Steps: 30
+- CFG scale: 7
+- Seed: 2307198650
+- Size: 512x768,
+- Model: anything-v5-PrtRE  
 
 Sampler Scheduler Parameters:  
 | Unit | Sampler | Steps |
