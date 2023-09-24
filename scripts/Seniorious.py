@@ -835,13 +835,31 @@ def add_seniorious():
     def constructor(model: nn.Module):
         return KDiffusionSamplerLocal(funcname, o_constructor, seniorious, model)
     
-    aliases = [ x + 'seniorious' for x in o_aliases ]
+    aliases = ['seniorious']
     options = { **o_options }
 
     data = sd_samplers_common.SamplerData(label, constructor, aliases, options)
     if len([ x for x in sd_samplers.all_samplers if x.name == label ]) == 0:
         sd_samplers.all_samplers.append(data)
 
+
+def add_seniorious_karras():
+    original = [x for x in K.samplers_k_diffusion if x[0] == 'Heun'][0]
+    o_label, o_constructor, o_aliases, o_options = original
+    o_options = {'scheduler': 'karras'}
+
+    label = 'Seniorious Karras'
+    funcname = seniorious.__name__
+
+    def constructor(model: nn.Module):
+        return KDiffusionSamplerLocal(funcname, o_constructor, seniorious, model)
+
+    aliases = ['seniorious_karras']
+    options = {**o_options}
+
+    data = sd_samplers_common.SamplerData(label, constructor, aliases, options)
+    if len([x for x in sd_samplers.all_samplers if x.name == label]) == 0:
+        sd_samplers.all_samplers.append(data)
 
 def update_samplers():
     sd_samplers.set_samplers()
@@ -872,6 +890,7 @@ def hook(fn):
 
 # register new sampler
 add_seniorious()
+add_seniorious_karras()
 update_samplers()
 
 
