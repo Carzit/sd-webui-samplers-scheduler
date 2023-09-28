@@ -49,7 +49,19 @@ The image generation process will follow the configurations of these 8 units in 
 You can also choose `Skip` to skip certain steps.
 
 ## Example
-![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example2.png)
+![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example2.png)  
+
+BRISQUE Score: 
+| Sampler | BRISQUE(lower-better) |
+| :-----:| :----: |
+| Euler | 23.3771 |
+| DPM++ 2M | 27.5705 |
+| DPM++ 2M Karras | 24.8244 |
+| Heun | 21.4943 |
+| DPM 2 | 22.1520 |
+| Seniorious | 21.3698 |
+| Seniorious Karras | 21.6955 |  
+
 Shared Parameters: 
 - Prompt: best quality, masterpiece, 1girl, solo, standing, sky, portrait, looking down, floating light particles, sunshine, cloud, depth of field, field, wide shot
 - Negative prompt: badhandv4, By bad artist -neg, EasyNegative, NegfeetV2, ng_deepnegative_v1_75t, verybadimagenegative_v1.3
@@ -67,7 +79,6 @@ Sampler Scheduler Parameters:
 | Sampler3 | Euler | 10 steps |  
 
 *Seniorious and Seniorious Karras use the same parameters in this example
-
 
 ## More
 The idea of this extension was inspired by Seniorious, a Carillon composed of different talismans.  
