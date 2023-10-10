@@ -58,9 +58,10 @@ config:
   
 | Sampler | FID |
 | :-----: | :----: |
-| Heun[18] | 7.02495|  
-| Heun[9]Euler[18] | 4.60633| 
-| Heun[12]DPM++2M[12] | 2.16356|  
+| Euler[36] | 3.66024 | 
+| Heun[18] | 7.02495 |  
+| Heun[9]Euler[18] | 4.60633 | 
+| Heun[12]DPM++2M[12] | 2.16356 |  
 
 Discretely scheduling different samplers during the sampling process has proven to be effective at a practical level.
   
