@@ -6,10 +6,10 @@ A samplers scheduler which can apply different sampler in diffrent generation st
 I hope it will be helpful to achieve a balance between generation speed and image quality.
 
 ## Requirement
-sd webui Version <= 1.5.2  
+SD WebUI Version <= 1.5.2  
 
 ## How to use
-This repository is a extension for sd webui. Just use it as a sd extension!😉  
+This repository is a extension for sd webui. Just place it in the `extension` folder!😉  
 
 Choose the Sampler `Seniorious` or `Seniorious Karras` to enable the samplers scheduler.  
 
@@ -31,7 +31,7 @@ The image generation process will follow the configurations of these 8 units in 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example1.PNG)
 
 ## Available Samplers
-12 kinds of mainstream samplers are available:  
+12 kinds of mainstream samplers in [k-diffusion](https://github.com/crowsonkb/k-diffusion) are available:  
 
 - `Euler`
 - `Euler a`
@@ -48,11 +48,27 @@ The image generation process will follow the configurations of these 8 units in 
 
 You can also choose `Skip` to skip certain steps.
 
+## FID Result
+I calculate the FID Score based on [the work of Karras et al.](https://github.com/NVlabs/edm)
+
+config:  
+- seeds=0-49999  
+- network=https://nvlabs-fi-cdn.nvidia.com/edm/pretrained/edm-cifar10-32x32-cond-vp.pkl  
+- NFE=36
+  
+| Sampler | FID |
+| :-----: | :----: |
+| Heun[18] | 7.02495|  
+| Heun[9]Euler[18] | 4.60633| 
+| Heun[12]DPM++2M[12] | 2.16356|  
+
+Discretely scheduling different samplers during the sampling process has proven to be effective at a practical level.
+  
 ## Example
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example2.png)  
 
 BRISQUE Score: 
-| Sampler | BRISQUE(lower-better) |
+| Sampler | BRISQUE |
 | :-----:| :----: |
 | Euler | 23.3771 |
 | DPM++ 2M | 27.5705 |
