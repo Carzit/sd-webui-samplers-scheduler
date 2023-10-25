@@ -49,7 +49,7 @@ The image generation process will follow the configurations of these 8 units in 
 You can also choose `Skip` to skip certain steps.
 
 ## FID Result
-I calculate the FID Score based on [the work of Karras et al.](https://github.com/NVlabs/edm)
+I calculate the FID Score based on [EDM](https://github.com/NVlabs/edm).
 
 config:  
 - seeds=0-49999  
@@ -98,6 +98,8 @@ Sampler Scheduler Parameters:
 *Seniorious and Seniorious Karras use the same parameters in this example
 
 ## More
+If all goes well, a preprint of the paper will be available on arxiv within a few months.  
+
 The idea of this extension was inspired by Seniorious, a Carillon composed of different talismans.  
 
 Different talismans correspond in sequence to make Seniorious a powerful weapon, and so do the samplers in the samplers scheduler.  
