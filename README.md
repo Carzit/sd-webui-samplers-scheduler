@@ -98,8 +98,6 @@ Sampler Scheduler Parameters:
 *Seniorious and Seniorious Karras use the same parameters in this example
 
 ## More
-If all goes well, a preprint of the paper will be available on arxiv within a few months.  
-
 The idea of this extension was inspired by Seniorious, a Carillon composed of different talismans.  
 
 Different talismans correspond in sequence to make Seniorious a powerful weapon, and so do the samplers in the samplers scheduler.  
