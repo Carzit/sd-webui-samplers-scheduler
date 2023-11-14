@@ -5,6 +5,8 @@ A samplers scheduler which can apply different sampler in diffrent generation st
 
 I hope it will be helpful to achieve a balance between generation speed and image quality.
 
+Our paper on arXiv: [Sampler Scheduler for Diffusion Models](https://arxiv.org/abs/2311.06845)  
+
 ## Requirement
 SD WebUI Version <= 1.5.2  
 
