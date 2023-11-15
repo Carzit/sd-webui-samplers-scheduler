@@ -1,7 +1,7 @@
 # sd-webui-samplers-scheduler Seniorious
 
 ## Introduce
-A samplers scheduler which can apply different sampler in diffrent generation steps,  
+A samplers scheduler which can apply different sampler in diffrent generation steps.  
 
 I hope it will be helpful to achieve a balance between generation speed and image quality.
 
