@@ -5,7 +5,7 @@ A samplers scheduler which can apply different sampler in diffrent generation st
 
 I hope it will be helpful to achieve a balance between generation speed and image quality.
 
-Our paper on arXiv: [Sampler Scheduler for Diffusion Models](https://arxiv.org/abs/2311.06845)  
+My paper on arXiv: [Sampler Scheduler for Diffusion Models](https://arxiv.org/abs/2311.06845)  
 
 ## Requirement
 SD WebUI Version <= 1.5.2  
@@ -104,6 +104,16 @@ Sampler Scheduler Parameters:
 | Sampler3 | Euler | 10 steps |  
 
 *Seniorious and Seniorious Karras use the same parameters in this example
+
+![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example3.png)  
+
+Sampler Scheduler Parameters:  
+| Unit | Sampler | Steps |
+| :-----:| :----: | :----: |
+| Sampler1 | DPM2 a | 20 steps |
+| Sampler2 | DPM2 | 10 steps |
+
+I recommend to use SDE in the early sampling steps and ODE in the later sampling steps to solve the inherent problems previously caused by using either singly.
 
 ## More
 The idea of this extension was inspired by Seniorious, a Carillon composed of different talismans.  
