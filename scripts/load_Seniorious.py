@@ -9,8 +9,8 @@ filename = 'CHANGELOG.md'
 
 if os.path.exists(filename):
     with open(filename, 'r') as md:
-    first_line = next(md)
-    version = first_line.replace('## 1.', '')[0]
+        first_line = next(md)
+        version = first_line.replace('## 1.', '')[0]
     
 else:
     print(f"{filename} does not exist...")
