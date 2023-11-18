@@ -7,10 +7,11 @@ I hope it will be helpful to achieve a balance between generation speed and imag
 
 My paper on arXiv: [Sampler Scheduler for Diffusion Models](https://arxiv.org/abs/2311.06845)  
 
-## Requirement
-SD WebUI Version <= 1.5.2  
+## WebUI Version
+Now compatible with all.  
 
-(For version >= 1.6.0, please use https://github.com/Carzit/sd-webui-samplers-scheduler-for-v1.6)
+The script `scripts/load_Seniorious.py` will load corresponding script according to your SD WebUI version automatically.  
+(`Seniorious.py` for version <= 1.5.2 and `Seniorious_16.py` for version >= 1.6.0)
 
 ## How to use
 This repository is a extension for sd webui. Just place it in the `extension` folder!😉  
