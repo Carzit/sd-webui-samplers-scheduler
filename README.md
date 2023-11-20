@@ -36,12 +36,12 @@ The image generation process will follow the configurations of these 8 units in 
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example1.PNG)
 
 ## Available Samplers
-12 kinds of mainstream samplers in [k-diffusion](https://github.com/crowsonkb/k-diffusion) are available:  
+13 kinds of mainstream samplers in [k-diffusion](https://github.com/crowsonkb/k-diffusion) are available:  
 
 - `Euler`
 - `Euler a`
 - `Heun`
-- `Heun++` (my improved version)
+- `Heun++` (my test version)
 - `LMS`
 - `DPM2`
 - `DPM2 a`
@@ -50,6 +50,7 @@ The image generation process will follow the configurations of these 8 units in 
 - `DPM++ 2M`
 - `DPM++ 2M SDE`
 - `DPM++ 3M SDE`
+- `Restart` (from https://github.com/Newbeeer/diffusion_restart_sampling, using the recommended hyperparameters)
 
 You can also choose `Skip` to skip certain steps.
 
