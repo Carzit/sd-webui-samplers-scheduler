@@ -4,15 +4,15 @@ import functools
 import torch
 from torch import nn
 
-from modules import shared
+import gradio as gr
+
 import k_diffusion.sampling
-from scripts.ksampler import sample_euler,sample_euler_ancestral,sample_heun,sample_heunpp2,sample_lms,sample_dpm_2,sample_dpm_2_ancestral,sample_dpmpp_2s_ancestral,sample_dpmpp_sde,sample_dpmpp_2m,sample_dpmpp_2m_sde,sample_dpmpp_3m_sde,sample_skip
+from scripts.ksampler import sample_euler,sample_euler_ancestral,sample_heun,sample_heunpp2,sample_lms,sample_dpm_2,sample_dpm_2_ancestral,sample_dpmpp_2s_ancestral,sample_dpmpp_sde,sample_dpmpp_2m,sample_dpmpp_2m_sde,sample_dpmpp_3m_sde,restart_sampler,sample_skip
 
 from modules import sd_samplers, sd_samplers_common
 import modules.sd_samplers_kdiffusion as K
 import modules.scripts as scripts
 from modules import shared, script_callbacks
-import gradio as gr
 import modules.ui
 from modules.ui_components import ToolButton, FormRow
 
@@ -28,6 +28,7 @@ samplers_list = ['Euler','Euler a', 'Heun', 'Heun++',
                  'DPM2','DPM2 a',
                  'DPM++ 2S a','DPM++ SDE',
                  'DPM++ 2M', 'DPM++ 2M SDE', 'DPM++ 3M SDE',
+                 'Restart',
                  'Skip',
                  'None']
 
@@ -43,6 +44,7 @@ name2sampler_func = {'Euler':sample_euler,
                      'DPM++ 2M':sample_dpmpp_2m,
                      'DPM++ 2M SDE':sample_dpmpp_2m_sde,
                      'DPM++ 3M SDE':sample_dpmpp_3m_sde,
+                     'Restart':restart_sampler,
                      'Skip':sample_skip,
                      'None':None
                      }
