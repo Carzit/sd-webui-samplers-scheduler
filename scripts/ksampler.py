@@ -23,6 +23,34 @@ def to_d(x, sigma, denoised):
     """Converts a denoiser output to a Karras ODE derivative."""
     return (x - denoised) / append_dims(sigma, x.ndim)
 
+def get_sigmas_karras(n, sigma_min, sigma_max, rho=7., device='cpu'):
+    """Constructs the noise schedule of Karras et al. (2022)."""
+    ramp = torch.linspace(0, 1, n)
+    min_inv_rho = sigma_min ** (1 / rho)
+    max_inv_rho = sigma_max ** (1 / rho)
+    sigmas = (max_inv_rho + ramp * (min_inv_rho - max_inv_rho)) ** rho
+    return append_zero(sigmas).to(device)
+
+
+def get_sigmas_exponential(n, sigma_min, sigma_max, device='cpu'):
+    """Constructs an exponential noise schedule."""
+    sigmas = torch.linspace(math.log(sigma_max), math.log(sigma_min), n, device=device).exp()
+    return append_zero(sigmas)
+
+
+def get_sigmas_polyexponential(n, sigma_min, sigma_max, rho=1., device='cpu'):
+    """Constructs an polynomial in log sigma noise schedule."""
+    ramp = torch.linspace(1, 0, n, device=device) ** rho
+    sigmas = torch.exp(ramp * (math.log(sigma_max) - math.log(sigma_min)) + math.log(sigma_min))
+    return append_zero(sigmas)
+
+
+def get_sigmas_vp(n, beta_d=19.9, beta_min=0.1, eps_s=1e-3, device='cpu'):
+    """Constructs a continuous VP noise schedule."""
+    t = torch.linspace(1, eps_s, n, device=device)
+    sigmas = torch.sqrt(torch.exp(beta_d * t ** 2 / 2 + beta_min * t) - 1)
+    return append_zero(sigmas)
+
 def get_ancestral_step(sigma_from, sigma_to, eta=1.):
     """Calculates the noise level (sigma_down) to step down to and the amount
     of noise to add (sigma_up) when doing an ancestral sampling step."""
@@ -460,43 +488,6 @@ def sample_dpm_2_ancestral(model, x, sigmas, extra_args=None, callback=None, dis
             x = x + noise_sampler(sigmas[i], sigmas[i + 1]) * s_noise * sigma_up
     return x
 
-#TODO ADD More Sampler and Fix These Strange ones
-'''
-@torch.no_grad()
-def sample_dpm_fast(model, x, sigmas, extra_args=None, callback=None, disable=None, eta=0., s_noise=1., noise_sampler=None):
-    """DPM-Solver-Fast (fixed step size). See https://arxiv.org/abs/2206.00927."""
-    sigma_min = min(sigmas)
-    sigma_max = max(sigmas)
-    n = len(sigmas)
-    if sigma_min <= 0 or sigma_max <= 0:
-        raise ValueError('sigma_min and sigma_max must not be 0')
-    with tqdm(total=n, disable=disable) as pbar:
-        dpm_solver = DPMSolver(model, extra_args, eps_callback=pbar.update)
-        if callback is not None:
-            dpm_solver.info_callback = lambda info: callback({'sigma': dpm_solver.sigma(info['t']), 'sigma_hat': dpm_solver.sigma(info['t_up']), **info})
-        print('dpm fast')
-        print(sigmas)
-        return dpm_solver.dpm_solver_fast(x, dpm_solver.t(torch.tensor(sigma_max)), dpm_solver.t(torch.tensor(sigma_min)), n, eta, s_noise, noise_sampler)
-
-@torch.no_grad()
-def sample_dpm_adaptive(model, x, sigmas, extra_args=None, callback=None, disable=None, order=3, rtol=0.05, atol=0.0078, h_init=0.05, pcoeff=0., icoeff=1., dcoeff=0., accept_safety=0.81, eta=0., s_noise=1., noise_sampler=None, return_info=False):
-    """DPM-Solver-12 and 23 (adaptive step size). See https://arxiv.org/abs/2206.00927."""
-    sigma_min = min(sigmas)
-    sigma_max = max(sigmas)
-
-    if sigma_min <= 0 or sigma_max <= 0:
-        raise ValueError('sigma_min and sigma_max must not be 0')
-    with tqdm(disable=disable) as pbar:
-        dpm_solver = DPMSolver(model, extra_args, eps_callback=pbar.update)
-        if callback is not None:
-            dpm_solver.info_callback = lambda info: callback({'sigma': dpm_solver.sigma(info['t']), 'sigma_hat': dpm_solver.sigma(info['t_up']), **info})
-        x, info = dpm_solver.dpm_solver_adaptive(x, dpm_solver.t(torch.tensor(sigma_max)), dpm_solver.t(torch.tensor(sigma_min)), order, rtol, atol, h_init, pcoeff, icoeff, dcoeff, accept_safety, eta, s_noise, noise_sampler)
-    if return_info:
-        return x, info
-    print('dpm adapt')
-    print(sigmas)
-    return x
-'''
 @torch.no_grad()
 def sample_dpmpp_2s_ancestral(model, x, sigmas, extra_args=None, callback=None, disable=None, eta=1., s_noise=1., noise_sampler=None):
     """Ancestral sampling with DPM-Solver++(2S) second-order steps."""
@@ -692,4 +683,90 @@ def sample_dpmpp_3m_sde(model, x, sigmas, extra_args=None, callback=None, disabl
 
         denoised_1, denoised_2 = denoised, denoised_1
         h_1, h_2 = h, h_1
+    return x
+
+@torch.no_grad()
+def lcm_sampler(model, x, sigmas, extra_args=None, callback=None, disable=None, noise_sampler=None):
+    extra_args = {} if extra_args is None else extra_args
+    noise_sampler = default_noise_sampler(x) if noise_sampler is None else noise_sampler
+    s_end = sigmas[-1]
+    s_in = x.new_ones([x.shape[0]])
+    for i in trange(len(sigmas) - 1, disable=disable):
+        denoised = model(x, sigmas[i] * s_in, **extra_args)
+        if callback is not None:
+            callback({'x': x, 'i': i, 'sigma': sigmas[i], 'sigma_hat': sigmas[i], 'denoised': denoised})
+
+        x = denoised
+        if sigmas[i + 1] > s_end:
+            x += sigmas[i + 1] * noise_sampler(sigmas[i], sigmas[i + 1])
+    return x
+
+@torch.no_grad()
+def restart_sampler(model, x, sigmas, extra_args=None, callback=None, disable=None, s_noise=1., restart_list=None):
+    """Implements restart sampling in Restart Sampling for Improving Generative Processes (2023)
+    Restart_list format: {min_sigma: [ restart_steps, restart_times, max_sigma]}
+    If restart_list is None: will choose restart_list automatically, otherwise will use the given restart_list
+    """
+    extra_args = {} if extra_args is None else extra_args
+    s_in = x.new_ones([x.shape[0]])
+    step_id = 0
+    s_end = sigmas[-1]
+
+    def heun_step(x, old_sigma, new_sigma, second_order=True):
+        nonlocal step_id, s_end
+        denoised = model(x, old_sigma * s_in, **extra_args)
+        d = to_d(x, old_sigma, denoised)
+        if callback is not None:
+            callback({'x': x, 'i': step_id, 'sigma': new_sigma, 'sigma_hat': old_sigma, 'denoised': denoised})
+        dt = new_sigma - old_sigma
+        if new_sigma == s_end or not second_order:
+            # Euler method
+            x = x + d * dt
+        else:
+            # Heun's method
+            x_2 = x + d * dt
+            denoised_2 = model(x_2, new_sigma * s_in, **extra_args)
+            d_2 = to_d(x_2, new_sigma, denoised_2)
+            d_prime = (d + d_2) / 2
+            x = x + d_prime * dt
+        step_id += 1
+        return x
+
+    steps = sigmas.shape[0] - 1
+    if restart_list is None:
+        if steps >= 20:
+            restart_steps = 9
+            restart_times = 1
+            if steps >= 36:
+                restart_steps = steps // 4
+                restart_times = 2
+            sigmas = get_sigmas_karras(steps - restart_steps * restart_times, sigmas[-2].item(), sigmas[0].item(), device=sigmas.device)
+            restart_list = {0.1: [restart_steps + 1, restart_times, 2]}
+        else:
+            restart_list = {}
+
+    restart_list = {int(torch.argmin(abs(sigmas - key), dim=0)): value for key, value in restart_list.items()}
+
+    step_list = []
+    for i in range(len(sigmas) - 1):
+        step_list.append((sigmas[i], sigmas[i + 1]))
+        if i + 1 in restart_list:
+            restart_steps, restart_times, restart_max = restart_list[i + 1]
+            min_idx = i + 1
+            max_idx = int(torch.argmin(abs(sigmas - restart_max), dim=0))
+            if max_idx < min_idx:
+                sigma_restart = get_sigmas_karras(restart_steps, sigmas[min_idx].item(), sigmas[max_idx].item(), device=sigmas.device)[:-1]
+                while restart_times > 0:
+                    restart_times -= 1
+                    step_list.extend([(old_sigma, new_sigma) for (old_sigma, new_sigma) in zip(sigma_restart[:-1], sigma_restart[1:])])
+
+    last_sigma = None
+    for old_sigma, new_sigma in tqdm(step_list, disable=disable):
+        if last_sigma is None:
+            last_sigma = old_sigma
+        elif last_sigma < old_sigma:
+            x = x + k_diffusion.sampling.torch.randn_like(x) * s_noise * (old_sigma ** 2 - last_sigma ** 2) ** 0.5
+        x = heun_step(x, old_sigma, new_sigma)
+        last_sigma = new_sigma
+
     return x
