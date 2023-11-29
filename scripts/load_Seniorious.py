@@ -1,21 +1,20 @@
-# use extension corresponding to sd webui version
+# import extension script corresponding to sd webui version
 # since it is difficult for sampler scheduler extension for v1.6.x to be backward compatible.
 
-import os
+from modules import launch_utils
 
-filename = 'CHANGELOG.md'
+version = launch_utils.git_tag()
 
-# I make a trick here. I use the CHANGELOG.md to get the webui version and if it is deleted, error will occur.
-
-if os.path.exists(filename):
-    with open(filename, 'r') as md:
-        first_line = next(md)
-        version = first_line.replace('## 1.', '')[0]
-    
+if version.startswith('1.'):
+    v = int(version[2])
+elif version.startswith('v1.'):
+    v = int(version[3])
 else:
-    print(f"{filename} does not exist...")
+    raise RuntimeError(f"WebUI Version cannot be found")
 
-if int(version) >= 6:
+if v == 6:
     from Seniorious_16 import *
-else:
+elif v <= 5:
     from Seniorious import *
+else:
+    raise RuntimeError(f"Unsupported WebUI Version")
