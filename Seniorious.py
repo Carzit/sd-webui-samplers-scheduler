@@ -6,7 +6,7 @@ from torch import nn
 
 from modules import shared
 import k_diffusion.sampling
-from scripts.ksampler import sample_euler,sample_euler_ancestral,sample_heun,sample_heunpp2,sample_lms,sample_dpm_2,sample_dpm_2_ancestral,sample_dpmpp_2s_ancestral,sample_dpmpp_sde,sample_dpmpp_2m,sample_dpmpp_2m_sde,sample_dpmpp_3m_sde,restart_sampler,sample_skip
+from scripts.ksampler import sample_euler,sample_euler_ancestral,sample_heun,sample_heunpp2,sample_lms,sample_dpm_2,sample_dpm_2_ancestral,sample_dpmpp_2s_ancestral,sample_dpmpp_sde,sample_dpmpp_2m,sample_dpmpp_2m_sde,sample_dpmpp_3m_sde,lcm_sampler,restart_sampler,sample_skip
 
 from modules import sd_samplers, sd_samplers_common
 import modules.sd_samplers_kdiffusion as K
@@ -25,7 +25,7 @@ samplers_list = ['Euler','Euler a', 'Heun', 'Heun++',
                  'DPM2','DPM2 a',
                  'DPM++ 2S a','DPM++ SDE',
                  'DPM++ 2M', 'DPM++ 2M SDE', 'DPM++ 3M SDE',
-                 'Restart',
+                 'LCM', 'Restart',
                  'Skip',
                  'None']
 
@@ -41,6 +41,7 @@ name2sampler_func = {'Euler':sample_euler,
                      'DPM++ 2M':sample_dpmpp_2m,
                      'DPM++ 2M SDE':sample_dpmpp_2m_sde,
                      'DPM++ 3M SDE':sample_dpmpp_3m_sde,
+                     'LCM':lcm_sampler,
                      'Restart':restart_sampler,
                      'Skip':sample_skip,
                      'None':None
@@ -61,11 +62,27 @@ class Script(scripts.Script):
     def show(self, is_img2img):
         return scripts.AlwaysVisible
 
+    def after_component(self, component, **kwargs):
+        if kwargs.get("elem_id") == "txt2img_steps":
+            self.t2i_steps = component
+        if kwargs.get("elem_id") == "img2img_steps":
+            self.i2i_steps = component
+
     def ui(self, is_img2img):
+
         def update_info(sampler, step, i):
             ui_info[i] = (sampler, int(step))
             if sampler == 'None':
                 ui_info[i] = (None, 0)
+
+        def get_info_total_steps():
+            return sum([s[1] for s in ui_info])
+
+        def get_sd_total_steps():
+            if is_img2img:
+                return self.i2i_steps
+            else:
+                return self.t2i_steps
 
         with gr.Group():
             with gr.Accordion("Samplers Scheduler Seniorious", open=False):
@@ -88,8 +105,13 @@ class Script(scripts.Script):
                         step.change(update_info,
                                     inputs=[sampler, step, index],
                                     outputs=[])
-
-
+                with gr.Accordion("Check", open=False):
+                    with FormRow(variant="compact"):
+                        seniorious_steps = gr.Textbox(label="Total steps in Seniorious")
+                        sd_steps = gr.Textbox(label="Total steps Required")
+                        check_btn = gr.Button(value="Check")
+                        check_btn.click(get_info_total_steps, inputs=[], outputs=[seniorious_steps])
+                        check_btn.click(lambda x:x, inputs=[get_sd_total_steps()], outputs=[sd_steps])
         return None
 
 #==================================================================================
