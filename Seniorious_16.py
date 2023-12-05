@@ -119,12 +119,16 @@ class Script(scripts.Script):
 # Sampler Scheduler
 
 def split_sigmas(sigmas, steps):
+    print('split_sigmas:',sigmas)
     result = []
     start = 0
     for num in steps:
         end = start + num
-        result.append(sigmas[start:end+1])
-        start = end
+        if (not sigmas[start:end+1]) or sigmas[start:end+1] == [0]:
+            break
+        else:
+            result.append(sigmas[start:end + 1])
+            start = end
     return result
 
 def get_samplers_steps():

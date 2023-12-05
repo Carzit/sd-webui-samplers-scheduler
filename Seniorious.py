@@ -118,12 +118,17 @@ class Script(scripts.Script):
 # Sampler Scheduler
 
 def split_sigmas(sigmas, steps):
+    print('split_sigmas:',sigmas)
     result = []
     start = 0
     for num in steps:
         end = start + num
-        result.append(sigmas[start:end+1])
-        start = end
+        if (not sigmas[start:end+1]) or sigmas[start:end+1] == [0]:
+            break
+        else:
+            result.append(sigmas[start:end + 1])
+            start = end
+
     return result
 
 def get_samplers_steps():
@@ -146,6 +151,7 @@ def seniorious(model, x, sigmas, extra_args=None, callback=None, disable=None, s
     samplers = [sampler_step[0] for sampler_step in samplers_steps]
     steps = [sampler_step[1] for sampler_step in samplers_steps]
     splitted_sigmas = split_sigmas(sigmas.tolist(), steps)
+
     x_ = x
 
     for i in range(len(splitted_sigmas)):
