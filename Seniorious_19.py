@@ -221,6 +221,7 @@ def add_seniorious():
 
 def update_samplers():
     sd_samplers.set_samplers()
+    sd_samplers.all_samplers_map = {x.name: x for x in sd_samplers.all_samplers}
 
 add_seniorious()
 update_samplers()
