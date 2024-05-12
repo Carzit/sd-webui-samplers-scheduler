@@ -22,7 +22,7 @@ Choose the Sampler `Seniorious` or `Seniorious Karras` to enable the samplers sc
 
 <img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/samplers_ui.png" width="500px">
 
-**Note that SD WebUI has implemented the separation of samplers and noise schedules since version 1.9.0.Therefore, `Seniorious Karras` will be deprecated since 1.9.0. Just like other samplers in SD WebUI, you can specify the Noise Scheduler used by Seniorious in the `Scheduler Type`**
+**Note that SD WebUI has implemented the separation of samplers and noise schedules since version 1.9.0. Therefore, `Seniorious Karras` will be deprecated since 1.9.0. Just like other samplers in SD WebUI, you can specify the Noise Scheduler used by Seniorious in the `Scheduler Type`.**
 
 <img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/samplers_ui_v19.png" width="500px">
 
