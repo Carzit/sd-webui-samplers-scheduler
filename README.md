@@ -11,17 +11,20 @@ My paper on arXiv: [Sampler Scheduler for Diffusion Models](https://arxiv.org/ab
 Now compatible with all.  
 
 The script `scripts/load_Seniorious.py` will load corresponding script according to your SD WebUI version automatically.  
-(`Seniorious.py` for version <= 1.5.2 and `Seniorious_16.py` for version >= 1.6.0)
+(`Seniorious.py` for version <= 1.5.2, `Seniorious_16.py` for version between 1.6.0 and 1.8.0, `Seniorious_19.py` for version >= 1.9.0)
 
 ## How to use
 This repository is a extension for sd webui. Just place it in the `extension` folder!😉  
 
 Choose the Sampler `Seniorious` or `Seniorious Karras` to enable the samplers scheduler.  
 
-*`Seniorious` uses nomal noise scheduler and `Seniorious Karras` uses the noise scheduler  
-recommended in [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364) (Karras et al., 2022)  
+*`Seniorious` uses nomal noise scheduler and `Seniorious Karras` uses the noise scheduler recommended in [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364) (Karras et al., 2022)*
 
-<img src="https://github.com/Carzit/sd-webui-samplers-scheduler-for-v1.6/blob/main/images/samplers_ui.png" width="500px">
+<img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/samplers_ui.png" width="500px">
+
+**Note that SD WebUI has implemented the separation of samplers and noise schedules since version 1.9.0.Therefore, `Seniorious Karras` will be deprecated since 1.9.0. Just like other samplers in SD WebUI, you can specify the Noise Scheduler used by Seniorious in the `Scheduler Type`**
+
+<img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/samplers_ui_v19.png" width="500px">
 
 This samplers scheduler provides 8 sampler units (Sampler 1-8). 
 
@@ -29,13 +32,13 @@ You can choose what kind of sampler used in each unit(choose `None` to unable), 
 
 The image generation process will follow the configurations of these 8 units in sequence. 
 
-<img src="https://github.com/Carzit/sd-webui-samplers-scheduler-for-v1.6/blob/main/images/scheduler_ui.png" width="500px">
+<img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/scheduler_ui.png" width="500px">
 
 **Attention: The total steps should be equal to the sum of the steps in every unit!**  
 Open the `Check` accordion and press the `Check` button to check total steps.   
 `Total steps in Seniorious` shows the sum of steps in your Sampler Scheduler Settings and `Total steps required` shows the steps you set in webui. They must be equal.  
 
-<img src="https://github.com/Carzit/sd-webui-samplers-scheduler-for-v1.6/blob/main/images/check_ui.png" width="500px">
+<img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/check_ui.png" width="500px">
 
 ## Available Samplers
 14 kinds of mainstream samplers in [k-diffusion](https://github.com/crowsonkb/k-diffusion) are available:  
@@ -87,7 +90,6 @@ Discretely scheduling different samplers during the sampling process has proven 
 ## Examples
 
 ### ODE Samplers
-
 ![](https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/example2.png)  
 
 BRISQUE Score: 
@@ -129,18 +131,6 @@ Sampler Scheduler Parameters:
 | Sampler2 | DPM2 | 10 steps |
 
 I recommend to use SDE in the early sampling steps and ODE in the later sampling steps to solve the inherent problems previously caused by using either singly.
-
-### About LCM Sampler
-Like other implemented sampling algorithms, I added the LCM sampler as a sampler option to our Sampler Scheduler.  
-But obviously the iteration formula of LCM sampler $x_{i+1} = D_\theta(x_{i}) + \sigma_{i+1}	\epsilon_i$ is different from those of traditional LDM samplers.   
-Ignoring its coupling with the LCM model and using it rashly as a plug-in sampler for LDM may cause some problems, such as blurring at the edge of the image.
-
-<img src="https://github.com/Carzit/sd-webui-samplers-scheduler-for-v1.6/blob/main/images/example_lcm1.png" width="200px"><img src="https://github.com/Carzit/sd-webui-samplers-scheduler-for-v1.6/blob/main/images/example_lcm2.png" width="200px">
-
-
-Moreover, based on some of my experience, I recommend using LCM sampler at later sampling steps rather than at the beginning.  
-In figures above, with other parameters fixed, the left uses 12-step `Euler a` + 8-step `LCM` while the right uses 8-step `LCM` + 12-step `Euler a`.
-
 
 ## More
 The idea of this extension was inspired by Seniorious, a Carillon composed of different talismans.  

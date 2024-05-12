@@ -7,7 +7,7 @@ from torch import nn
 import gradio as gr
 
 import k_diffusion.sampling
-from scripts.ksampler import sample_euler,sample_euler_ancestral,sample_heun,sample_heunpp2,sample_lms,sample_dpm_2,sample_dpm_2_ancestral,sample_dpmpp_2s_ancestral,sample_dpmpp_sde,sample_dpmpp_2m,sample_dpmpp_2m_sde,sample_dpmpp_3m_sde,lcm_sampler,restart_sampler,sample_skip
+from scripts.samplers import sample_euler,sample_euler_ancestral,sample_heun,sample_heunpp2,sample_lms,sample_dpm_2,sample_dpm_2_ancestral,sample_dpmpp_2s_ancestral,sample_dpmpp_sde,sample_dpmpp_2m,sample_dpmpp_2m_sde,sample_dpmpp_3m_sde,lcm_sampler,restart_sampler,sample_skip
 
 from modules import sd_samplers, sd_samplers_common
 import modules.sd_samplers_kdiffusion as K
@@ -137,11 +137,11 @@ def get_samplers_steps():
         if i[0] != None and i[1] != 0:
             result.append(i)
     return result
+
 @torch.no_grad()
 def seniorious(model, x, sigmas, extra_args=None, callback=None, disable=None, **kwargs):
     """Implements Algorithm 2 (Heun steps) from Karras et al. (2022)."""
     extra_args = {} if extra_args is None else extra_args
-    callback_ = callback
 
     print('Sampler Scheduler Settings:', end=' ')
     print(ui_info)
@@ -151,13 +151,12 @@ def seniorious(model, x, sigmas, extra_args=None, callback=None, disable=None, *
     samplers = [sampler_step[0] for sampler_step in samplers_steps]
     steps = [sampler_step[1] for sampler_step in samplers_steps]
     splitted_sigmas = split_sigmas(sigmas.tolist(), steps)
-    x_ = x
 
     for i in range(len(splitted_sigmas)):
         s = torch.tensor(splitted_sigmas[i], device='cuda:0')
-        x_ = samplers[i](model=model, x=x_, sigmas=s, extra_args=extra_args, callback=callback_)
+        x = samplers[i](model=model, x=x, sigmas=s, extra_args=extra_args, callback=callback)
 
-    return x_
+    return x
 
 #==================================================================================
 # register new sampler
