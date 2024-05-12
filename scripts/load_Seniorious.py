@@ -12,7 +12,9 @@ elif version.startswith('v1.'):
 else:
     raise RuntimeError(f"WebUI Version cannot be found")
 
-if v == 6:
+if v==9:
+    from Seniorious_19 import *
+elif 6<=v<=8:
     from Seniorious_16 import *
 elif v <= 5:
     from Seniorious import *
