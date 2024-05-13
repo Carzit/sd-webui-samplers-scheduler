@@ -16,13 +16,13 @@ The script `scripts/load_Seniorious.py` will load corresponding script according
 ## How to use
 This repository is a extension for sd webui. Just place it in the `extension` folder!😉  
 
-Choose the Sampler `Seniorious` or `Seniorious Karras` to enable the samplers scheduler.  
+Choose the Sampler `Seniorious`, `Seniorious Karras` or `Seniorious Exponential` to enable the samplers scheduler.  
 
-*`Seniorious` uses nomal noise scheduler and `Seniorious Karras` uses the noise scheduler recommended in [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364) (Karras et al., 2022)*
+*`Seniorious` uses nomal noise schedule, `Seniorious Karras` uses the noise schedule recommended in [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364) (Karras et al., 2022) and `Seniorious Exponential` uses exponential noise schedule recommended in [Improved Order Analysis and Design of Exponential Integrator for Diffusion Models Sampling](https://arxiv.org/abs/2308.02157)*
 
-<img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/samplers_ui.png" width="500px">
+<img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/samplers_ui.PNG" width="500px">
 
-**Note that SD WebUI has implemented the separation of samplers and noise schedules since version 1.9.0. Therefore, `Seniorious Karras` will be deprecated since 1.9.0. Just like other samplers in SD WebUI, you can specify the Noise Schedule used by Seniorious in the `Scheduler Type`.**
+**Note that SD WebUI has implemented the separation of samplers and noise schedules since version 1.9.0. Therefore, `Seniorious Karras` and `Seniorious Exponential` will be deprecated since 1.9.0. Just like other samplers in SD WebUI, you can specify the noise schedule used by Seniorious in the `Schedule Type`.**
 
 <img src="https://github.com/Carzit/sd-webui-samplers-scheduler/blob/main/images/samplers_ui_v19.PNG" width="500px">
 
