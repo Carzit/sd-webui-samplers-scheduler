@@ -119,7 +119,6 @@ class Script(scripts.Script):
 # Sampler Scheduler
 
 def split_sigmas(sigmas, steps):
-    print('split_sigmas:',sigmas)
     result = []
     start = 0
     for num in steps:
@@ -164,65 +163,22 @@ def seniorious(model, x, sigmas, extra_args=None, callback=None, disable=None, *
 class KDiffusionSamplerLocal(K.KDiffusionSampler):
 
     def __init__(self, funcname, sd_model, options=None):
-        self.funcname = funcname
-        self.func = seniorious
-        self.extra_params = []
-        self.model_wrap_cfg = K.CFGDenoiserKDiffusion(self)
-        self.model_wrap = self.model_wrap_cfg.inner_model
-        self.sampler_noises = None
-        self.stop_at = None
-        self.config = None
-        self.last_latent = None
-        self.options = options or {}
-
-
-        self.eta = 1
-        self.eta_option_field = 'eta_ancestral'
-        self.eta_infotext_field = 'Eta'
-        self.eta_default = 1.0
-
-        self.conditioning_key = sd_model.model.conditioning_key
+        super().__init__(funcname, sd_model, options)
 
     def initialize(self, p) -> dict:
-        self.p = p
-        self.model_wrap_cfg.p = p
-        self.model_wrap_cfg.mask = p.mask if hasattr(p, 'mask') else None
-        self.model_wrap_cfg.nmask = p.nmask if hasattr(p, 'nmask') else None
-        self.model_wrap_cfg.step = 0
-        self.model_wrap_cfg.image_cfg_scale = getattr(p, 'image_cfg_scale', None)
-
-        self.s_min_uncond = getattr(p, 's_min_uncond', 0.0)
-
-        self.s_churn = 0.0
-        self.s_tmin = 0.0
-        self.s_tmax = float('inf')
-        self.s_noise = 1.0
-
-
-        k_diffusion.sampling.torch = sd_samplers_common.TorchHijack(p)
-
-        extra_params_kwargs = {}
+        extra_params_kwargs = super().initialize(p)
         extra_params_kwargs["Sampler Scheduler Config"] = str(ui_info)
         self.p.extra_generation_params["Sampler Scheduler Config"] = str(ui_info)
         return extra_params_kwargs
-
-
-def add_seniorious():
-    label = 'Seniorious'
-    funcname = seniorious.__name__
-    aliases = ['seniorious']
-    options = {}
-    new_sampler = [(label, funcname, aliases, options)]
-
-    data = [sd_samplers_common.SamplerData(label, lambda model, funcname=funcname: KDiffusionSamplerLocal(funcname, model),aliases, options)
-                                 for label, funcname, aliases, options in new_sampler][0]
-
+    
+def add_sampler(label:str, func, aliases:list, options:dict, SamplerClass=K.KDiffusionSampler):
+    data = sd_samplers_common.SamplerData(label, lambda model, funcname=func: SamplerClass(funcname, model), aliases, options)
     sd_samplers.all_samplers.append(data)
-
+    
 def update_samplers():
     sd_samplers.set_samplers()
     sd_samplers.all_samplers_map = {x.name: x for x in sd_samplers.all_samplers}
 
-add_seniorious()
+add_sampler(label="Seniorious", func=seniorious, aliases=['seniorious'], options = {}, SamplerClass=KDiffusionSamplerLocal)
 update_samplers()
 

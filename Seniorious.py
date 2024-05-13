@@ -118,7 +118,6 @@ class Script(scripts.Script):
 # Sampler Scheduler
 
 def split_sigmas(sigmas, steps):
-    print('split_sigmas:',sigmas)
     result = []
     start = 0
     for num in steps:
