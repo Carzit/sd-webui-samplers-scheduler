@@ -160,8 +160,6 @@ def seniorious(model, x, sigmas, extra_args=None, callback=None, disable=None, *
 #==================================================================================
 # register new sampler
 
-# register new sampler
-
 class KDiffusionSamplerLocal(K.KDiffusionSampler):
 
     def __init__(self, funcname, sd_model, options=None):
